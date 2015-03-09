@@ -4,7 +4,6 @@
 import pygame
 import random
 import copy
-from symbol import factor
 
 FULL_ANGLE = 360
 SIZE = 640, 480
@@ -57,10 +56,11 @@ class Ball:
         if not other:
             self.surface = pygame.image.load(filename)
             self.orig_surface = pygame.image.load(filename)
+            self.rect = self.surface.get_rect()
         else:
             self.orig_surface = other.orig_surface.copy()
             self.surface = other.surface.copy()
-        self.rect = self.surface.get_rect()
+            self.rect = other.rect.copy()
         self.speed = speed
         self.pos = pos
         self.newpos = pos
@@ -73,13 +73,13 @@ class Ball:
         
     def offset(self, other):
         """Position of the other Ball / object relative to self"""
-        return (other.pos[0] - self.pos[0], other.pos[1] - self.pos[1])
+        tl_self = self.rect.topleft
+        tl_other = other.rect.topleft
+        return (tl_other[0] - tl_self[0], tl_other[1] - tl_self[1])
         
     def intersect(self, other):
         self_mask = pygame.mask.from_surface(self.surface)
-        print "count 1 = " + str(self_mask.count())
         other_mask = pygame.mask.from_surface(other.surface)
-        print "count 2 = " + str(other_mask.count())
         return self_mask.overlap(other_mask, intn(*self.offset(other)))
 
     def draw(self, surface, all):
@@ -94,6 +94,7 @@ class Ball:
         self.pos = self.pos[0] + sign * self.speed[0] * factor, \
             self.pos[1] + sign * self.speed[1] * factor + sign * Run.gravity_acceleration * factor ** 2 / 2
         self.speed = (self.speed[0], self.speed[1] + sign * Run.gravity_acceleration * factor)
+        self.rect.center = intn(*self.pos)
 
 
     def action(self):
@@ -101,46 +102,49 @@ class Ball:
         if self.active:
             self.update()
 
-    def logic(self, surface, objects):
-        x,y = self.pos
+
+    def meet_walls(self, surface):
+        x, y = self.pos
         dx, dy = self.speed
-        if x < self.rect.width/2:
-            x = self.rect.width/2
+        if x < self.rect.width / 2:
+            x = self.rect.width / 2
             dx = -dx
-        elif x > surface.get_width() - self.rect.width/2:
-            x = surface.get_width() - self.rect.width/2
+        elif x > surface.get_width() - self.rect.width / 2:
+            x = surface.get_width() - self.rect.width / 2
             dx = -dx
-        if y < self.rect.height/2:
-            y = self.rect.height/2
+        if y < self.rect.height / 2:
+            y = self.rect.height / 2
             dy = -dy
-        elif y > surface.get_height() - self.rect.height/2:
-            y = surface.get_height() - self.rect.height/2
+        elif y > surface.get_height() - self.rect.height / 2:
+            y = surface.get_height() - self.rect.height / 2
             dy = -dy
-        self.pos = x,y
-        self.speed = dx,dy
+        self.pos = x, y
+        self.speed = dx, dy
         self.rect.center = intn(*self.pos)
+
+    def logic(self, surface, objects):
+        self.meet_walls(surface)
         # before doing that we should really save all objects' states
         # because we use speeds and position to calculate
         # speed vector changes for other objects
         # but for 2 objects it's OK
         for obj in objects:
             if self.intersect(obj):
-                print "overlap" + str(random.randrange(234))
                 l, r = 0, 1
-                print "start binsearch"
                 while (r - l > EPS):
                     m = (l + r) / 2.
                     middle_1 = BallWithSizeAndRotation.clone(self)
                     middle_2 = BallWithSizeAndRotation.clone(obj)
                     middle_1.update(True, m)
                     middle_2.update(True, m)
-                    print "intersect " + str(m)
                     if middle_1.intersect(middle_2):
                         l = m
                     else:
                         r = m
-                    print 'OK'
-                print "binsearch OK"
+                middle_1 = BallWithSizeAndRotation.clone(self)
+                middle_2 = BallWithSizeAndRotation.clone(obj)
+                middle_1.update(True, r)
+                middle_2.update(True, r)
                 self.pos = middle_1.pos
                 obj.pos = middle_2.pos
                 self.speed = -self.speed[0], -self.speed[1]
@@ -257,8 +261,8 @@ for i in xrange(NUM_BALLS):
     x, y = random.randrange(screenrect.w), random.randrange(screenrect.h)
     dx, dy = 1 + random.random() * 5, 1 + random.random() * 5
     dx, dy = 0, 0
-    Run.objects.append(BallWithSizeAndRotation(1, #.5 + random.random(),
-                                               0, #(-1) ** random.randrange(2) * random.randrange(FULL_ANGLE / 4), 
+    Run.objects.append(BallWithSizeAndRotation(.5 + random.random(),
+                                               (-1) ** random.randrange(2) * random.randrange(FULL_ANGLE / 4),
                                                OBJ_IMAGE_NAME,
                                                (x,y),
                                                (dx,dy) ))
