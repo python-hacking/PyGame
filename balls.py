@@ -59,7 +59,9 @@ class Ball:
     def action(self):
         '''Proceed some action'''
         if self.active:
-            self.pos = self.pos[0]+self.speed[0], self.pos[1]+self.speed[1]
+            global Run
+            self.pos = self.pos[0]+self.speed[0], self.pos[1]+self.speed[1] + Run.gravity_acceleration / 2
+            self.speed = (self.speed[0], self.speed[1] + Run.gravity_acceleration)
 
     def logic(self, surface):
         x,y = self.pos
@@ -101,16 +103,17 @@ class GameWithObjects(GameMode):
     def __init__(self, objects=[]):
         GameMode.__init__(self)
         self.objects = objects
+        self.gravity_acceleration = 7
 
     def locate(self, pos):
         return [obj for obj in self.objects if obj.rect.collidepoint(pos)]
 
     def Events(self, event):
         global Game
+        GameMode.Events(self, event)
         if event.type == Game.tickevent:
             for obj in self.objects:
                 obj.action()
-        GameMode.Events(self, event)
 
     def Logic(self, surface):
         GameMode.Logic(self, surface)
