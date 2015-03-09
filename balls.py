@@ -106,10 +106,11 @@ class GameWithObjects(GameMode):
         return [obj for obj in self.objects if obj.rect.collidepoint(pos)]
 
     def Events(self, event):
-        GameMode.Events(self, event)
+        global Game
         if event.type == Game.tickevent:
             for obj in self.objects:
                 obj.action()
+        GameMode.Events(self, event)
 
     def Logic(self, surface):
         GameMode.Logic(self, surface)
@@ -129,6 +130,7 @@ class GameWithDnD(GameWithObjects):
         self.drag = None
 
     def Events(self, event):
+        global Game
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             click = self.locate(event.pos)
             if click:
@@ -140,15 +142,16 @@ class GameWithDnD(GameWithObjects):
                     self.drag.pos = event.pos
                     self.drag.speed = event.rel
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            self.drag.active = True
-            self.drag = None
+            if self.drag:
+                self.drag.active = True
+                self.drag = None
         GameWithObjects.Events(self, event)
 
 Init(SIZE)
-Game = Universe(50)
+Game = Universe(100)
 
 Run = GameWithDnD()
-for i in xrange(5):
+for i in xrange(3):
     x, y = random.randrange(screenrect.w), random.randrange(screenrect.h)
     dx, dy = 1+random.random()*5, 1+random.random()*5
     Run.objects.append(Ball("ball.gif",(x,y),(dx,dy)))
@@ -156,10 +159,11 @@ for i in xrange(5):
 Game.Start()
 Run.Init()
 again = True
-while again:
+while True:
     event = pygame.event.wait()
+#     print pygame.event.event_name(event.type)
     if event.type == pygame.QUIT:
-        again = False
+        break
     Run.Events(event)
     Run.Logic(screen)
     Run.Draw(screen)
