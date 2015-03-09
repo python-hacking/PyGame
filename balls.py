@@ -4,7 +4,11 @@
 import pygame
 import random
 
+FULL_ANGLE = 360
 SIZE = 640, 480
+NUM_BALLS = 3
+TICK_INTERVAL = 100
+GRAVITY_CONST = 7
 
 def intn(*arg):
     return map(int,arg)
@@ -47,6 +51,7 @@ class Ball:
         '''Create a ball from image'''
         self.fname = filename
         self.surface = pygame.image.load(filename)
+        self.orig_surface = pygame.image.load(filename)
         self.rect = self.surface.get_rect()
         self.speed = speed
         self.pos = pos
@@ -82,6 +87,23 @@ class Ball:
         self.speed = dx,dy
         self.rect.center = intn(*self.pos)
 
+class BallWithSizeAndRotation(Ball):
+    def __init__(self, factor = 1, rot_speed = 0, *args, **kwargs):
+        Ball.__init__(self, *args, **kwargs)
+        self.factor = factor
+        self.cur_rotation = 0
+        self.rot_speed = rot_speed
+        self.surface = pygame.transform.rotozoom(self.orig_surface, 0, self.factor)
+        self.rect = self.surface.get_rect()
+    def action(self):
+        if self.active:
+            self.cur_rotation = (self.cur_rotation + self.rot_speed) % FULL_ANGLE
+            print "before " + str(self.surface.get_height())
+            self.surface = pygame.transform.rotozoom(self.orig_surface, self.cur_rotation, self.factor)
+            print "after" + str(self.surface.get_height())
+            self.rect = self.surface.get_rect()
+        Ball.action(self)
+
 class Universe:
     '''Game universe'''
 
@@ -103,7 +125,7 @@ class GameWithObjects(GameMode):
     def __init__(self, objects=[]):
         GameMode.__init__(self)
         self.objects = objects
-        self.gravity_acceleration = 7
+        self.gravity_acceleration = GRAVITY_CONST
 
     def locate(self, pos):
         return [obj for obj in self.objects if obj.rect.collidepoint(pos)]
@@ -151,13 +173,17 @@ class GameWithDnD(GameWithObjects):
         GameWithObjects.Events(self, event)
 
 Init(SIZE)
-Game = Universe(100)
+Game = Universe(TICK_INTERVAL)
 
 Run = GameWithDnD()
-for i in xrange(3):
+for i in xrange(NUM_BALLS):
     x, y = random.randrange(screenrect.w), random.randrange(screenrect.h)
-    dx, dy = 1+random.random()*5, 1+random.random()*5
-    Run.objects.append(Ball("ball.gif",(x,y),(dx,dy)))
+    dx, dy = 1 + random.random() * 5, 1 + random.random() * 5
+    Run.objects.append(BallWithSizeAndRotation(.5 + random.random(),
+                                               (-1) ** random.randrange(2) * random.randrange(FULL_ANGLE / 4), 
+                                               "ball.gif",
+                                               (x,y),
+                                               (dx,dy) ))
 
 Game.Start()
 Run.Init()
